@@ -1,3 +1,13 @@
+# ----- Additional .gitignore items -----
+
+# Data folder
+/data/
+
+# macOS specific folder item
+.DS_Store
+
+
+# ----- Default R .gitignore below -----
 # History files
 .Rhistory
 .Rapp.history
