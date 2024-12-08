@@ -20,7 +20,6 @@ Using the ADEMP framework, we simulated cRCTs under both normal and Poisson dist
 ### Factorial Analysis
 - Uncovered complex interactions between cost structures and variance components
 - Showed that cost ratio effects dominate variance effects within tested parameter ranges
-- Identified similar optimization patterns between normal and Poisson cases, with Poisson showing more defined optimal regions
 - Demonstrated that optimal designs cluster more distinctly in high-variance scenarios
 
 ### Main Insights
