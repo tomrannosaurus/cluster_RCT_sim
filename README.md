@@ -44,7 +44,7 @@ While individual parameter effects follow expected patterns, their interactions 
 - Focus on specific cost ratio ranges
 
 
-[The full report can be found here](**add URL**)
+[The full report can be found here](https://github.com/tomrannosaurus/cluster_RCT_sim/blob/main/cluster_RCT_sim.pdf)
 
 
 ## Setup
@@ -52,26 +52,11 @@ While individual parameter effects follow expected patterns, their interactions 
 - R Version: 4.3.1
 - Package Versions:
    - tidyverse: 2.0.0
-   - knitr: 1.45
-   - kableExtra: 1.3.4
    - ggplot2: 3.4.3
-   - naniar 1.0.0
-   - visdat 0.6.0
-   - car 3.1-2
    - lme4 1.1-34
-   - ggpubr 0.6.0
-   - outliers: 0.15
-   - reshape2: 1.4.4
-   - moments: 0.14.1
-   - vcd: 1.4-12
-   - glmnet 4.1-8
-   - mice 3.16.0
-   - caret 6.0-94
-   - pROC 1.18.4
 
 ## Files
 
 - Report Quarto: [*add quarto*].qmd
-- Helper functions code: _helpers.R
 - Tex files: column-commands.tex, float-setup.tex, geometry-settings.tex, table-packages.tex, title-settings.tex
 - References file: references.bib
