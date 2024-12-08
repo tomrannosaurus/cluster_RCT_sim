@@ -1,0 +1,18 @@
+% Adjust font sizes for section headers
+\addtokomafont{section}{\fontsize{14}{17}\selectfont}
+\addtokomafont{subsection}{\fontsize{12}{15}\selectfont}
+\addtokomafont{subsubsection}{\fontsize{11}{13}\selectfont}
+
+% Remove spacing after section headers
+\RedeclareSectionCommand[
+  beforeskip=-3.5ex plus -1ex minus -.2ex,
+  afterskip=0.1ex
+]{section}
+\RedeclareSectionCommand[
+  beforeskip=-3.25ex plus -1ex minus -.2ex,
+  afterskip=0.1ex
+]{subsection}
+\RedeclareSectionCommand[
+  beforeskip=-3ex plus -1ex minus -.2ex,
+  afterskip=0.1ex
+]{subsubsection}

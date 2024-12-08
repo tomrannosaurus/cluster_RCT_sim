@@ -1,0 +1,12 @@
+% float-setup.tex
+% Configuration for figures and tables
+
+\usepackage{floatrow}  % Note: kableExtra causes conflict; see inserted 'options()' call in `r setup` code block
+\floatsetup[figure]{capposition=top}
+\floatsetup[table]{capposition=top}
+\floatsetup[longtable]{margins=centering}   % Longtable tables centered.
+\floatplacement{figure}{H}
+\floatplacement{table}{H}
+
+% Below must be INSERTED IN QUARTO MARKDOWN to avoid error, ABOVE LOADING kableExtra
+% options(kableExtra.latex.load_packages = FALSE) # Required to avoid floatrow error 

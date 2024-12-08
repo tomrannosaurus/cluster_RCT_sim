@@ -1,0 +1,19 @@
+% column-commands.tex
+% Commands and packages related to columns
+
+% Multicol Package and Commands
+\usepackage{multicol}
+\newcommand{\btwocol}{\begin{multicols}{2}}
+\newcommand{\etwocol}{\end{multicols}}
+
+% Minipage Commands for Uneven Columns
+\newcommand{\bunevencol}{
+  \noindent\begin{minipage}[t]{0.375\textwidth}
+}
+\newcommand{\middleunevencol}{
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.625\textwidth}
+}
+\newcommand{\eunevencol}{
+  \end{minipage}
+}
