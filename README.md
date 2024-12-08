@@ -7,7 +7,7 @@ Cluster randomized control trials (cRCTs) require careful balance between the nu
 Using the ADEMP framework, we simulated cRCTs under both normal and Poisson distributions to identify configurations that minimize the standard error (SE) of the treatment effect ($\beta$). Our approach included:
 - Univariate analyses examining individual parameter effects
 - Factorial designs exploring parameter interactions
-- Cost ratios ($c_1$/$c_2$) ranging from 20:1 to 100:19
+- Cost ratios ($c_1$/$c_2$) ranging from 20:19 to 100:1
 - Various ICC scenarios through different $\gamma$ and $\sigma$ combinations
 - Budget constraints enforcing trade-offs between cluster number (G) and replicates (R)
 
