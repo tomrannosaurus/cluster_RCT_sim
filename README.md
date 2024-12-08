@@ -1,29 +1,47 @@
-README
-
 # Resource Optimization in a Cluster Randomized Control Trial
 
-## Background: 
-Researchers conducting cluster randomized control trials (cRCTs), including genetic sequencing studies where a sample is tested multiple times, must navigate a trade-off between the number of clusters and their size to optimize their budgets while producing the most meaningful results possible. In this simulation study, we explored cost optimization in a cRCT of the treatment effect on outcome Y. Borrowing the framework of a genetic sequencing study, we conceptualized clusters as individuals and samples within clusters as technical replicates. We examined the effect of changing the cost of adding individuals relative to the cost of adding technical replicates, as well as the effect of changing variance between individuals ($\gamma$) and variance of a given technical replicate from an individual’s true value ($\sigma$). 
+## Background
+Cluster randomized control trials (cRCTs) require careful balance between the number of clusters and observations per cluster to optimize limited research budgets. Using the framework of a genetic sequencing study, where clusters represent individuals and within-cluster observations represent technical replicates, we explored how to optimize this balance through simulation. We investigated how optimal designs vary with the relative costs of adding new clusters versus new observations within clusters, while accounting for between-cluster variation ($\gamma$) and within-cluster variation ($\sigma$).
 
 ## Methods
-We used the ADEMP framework to examine which optimal combinations of cluster size and cluster number minimize standard error (SE) of the treatment effect ($\beta$) of outcome variable Y. We performed both normal and Poisson distributions. Moreover, in addition to simulations varying one parameter at a time, we performed factorial designs varying multiple parameters. 
+Using the ADEMP framework, we simulated cRCTs under both normal and Poisson distributions to identify configurations that minimize the standard error (SE) of the treatment effect ($\beta$). Our approach included:
+- Univariate analyses examining individual parameter effects
+- Factorial designs exploring parameter interactions
+- Cost ratios ($c_1$/$c_2$) ranging from 20:1 to 100:19
+- Various ICC scenarios through different $\gamma$ and $\sigma$ combinations
+- Budget constraints enforcing trade-offs between cluster number (G) and replicates (R)
 
-## Results 
+## Key Findings
 
-For a given problem space, different scenarios varying cost and variance parameters at various levels were produced and analyzed. The directionality of the effects of these parameters on the optimal number of individuals and technical replicates were as expected. Varying the underlying parameters for the data generating process also had predictable effects on our ability to estimate treatment effect.  
+### Univariate Analysis
+- Demonstrated predictable relationships between individual parameters and optimal designs
+- Revealed initial evidence of boundary conditions where optimal configurations change abruptly
 
-When cost ratio was high, the specific value of $\sigma$ and $\gamma$ changed the optimal number of individuals and technical replicates more than when cost ratio was low. Moreover, in high cost ratio scenarios, the optimal r and G to minimize SE of the estimate changes in a non-linear way when varying ($\sigma$ and $\gamma$).
+### Factorial Analysis
+- Uncovered complex interactions between cost structures and variance components
+- Showed that cost ratio effects dominate variance effects within tested parameter ranges
+- Identified similar optimization patterns between normal and Poisson cases, with Poisson showing more defined optimal regions
+- Demonstrated that optimal designs cluster more distinctly in high-variance scenarios
 
-## Conclusion 
+### Critical Insights
+1. Higher cost ratios ($c_1$/$c_2$) lead to:
+   - Greater sensitivity to variance parameters
+   - More volatile optimal configurations
+   - Non-linear relationships between variance and optimal designs
 
-*Note - i am not sure that everything captures the difference between univariate and factorial results/conclusions*
+2. ICC effects:
+   - More pronounced in high total variance scenarios
+   - Create consistent monotonic relationships with SE in Poisson cases
+   - Generate variable relationships in normal cases
 
-*Note - is the term 'variance' being used correctly? should it be changed to ICC*
+## Conclusions
+While individual parameter effects follow expected patterns, their interactions create complex optimization landscapes. Cost ratios primarily drive optimal design choices, but variance parameters introduce important nuances. The study emphasizes the critical importance of accurate variance estimation before trial implementation, as suboptimal design choices may significantly impact precision.
 
-Overall, the univariate cases yield generally expected results, but factorial design revealed unexpectedly complicated ones. Cost ratio appeared to be more consequential than $\sigma$ and $\gamma$ with respect to the optimal number of individuals and number of technical replicates, at least within the values of $\sigma$ and $\gamma$ that we tested. 
-Notably, the optimal number of individuals and number of technical replicates depended on variance in a much more complex way than expected, with specific values of variance changing optimal cluster size and number in a non-uniform, non-linear way. The unexpected complexity of this relationship suggests that estimating variance between and within clusters prior to beginning a cRCT is critical to minimizing standard error. 
-
-Limitations included boundary effects and the volatility of generalized linear models. [*note - optional - as well as lack of justification for range*] Future directions for research could be including cluster size and number combinations that come very close to minimizing SE or using a Bayesian modeling approach.
+## Limitations
+- Boundary effects in optimization
+- Model convergence challenges in some scenarios
+- Limited exploration of variance parameter ranges
+- Focus on specific cost ratio ranges
 
 
 [The full report can be found here](**add URL**)
