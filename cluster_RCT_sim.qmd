@@ -99,6 +99,7 @@ Consider a cRCT with $G$ clusters and $R$ observations per cluster. Let $X_i$ be
 
 In the Poisson case, $\alpha$ is the log baseline rate, $\beta$ is the log rate ratio for treatment, and $\gamma^2$ is the between-cluster variance on log scale. $\sum_{j=1}^R Y_{ij}|\mu_i \sim \text{Poisson}(R\mu_i)$ is consequential because it tells us that when we take multiple measurements within a cluster in the Poisson case, we can analyze the sum of counts rather than individual measurements. 
 
+\newpage
 
 \btwocol
 
@@ -135,7 +136,7 @@ $$\text{SE}(\hat{\beta}) = \sqrt{\frac{4(\gamma^2 + \sigma^2/R)} {G}}$$
 
 From this we see that larger $R$ is optimal when $\sigma/\gamma$ or $c_1/c_2$ is large, when $c_2 \ll c_1$, it becomes more efficient to take multiple measurements $R$ within clusters, and finally that $\sigma \ll \gamma$ favors scenarios with many clusters $G$ relative to $R$. Additionally, @raudenbush1997statistical notes this is an unbiased estimator, which has an impact on the design of our simulation study insofar as we should choose an estimand which directly measures variance rather than a combination of variance and bias.
 
-Finally, we use the theoretical definitions above to inform our parameters of interest. We can see from our theoretical derivations that $\alpha$, $\beta$, while consequential to the estimation of our treatment effect $\hat{\beta}$, will not alter the $\text{SE}(\hat{\beta})$. We do not present the results of varying $B$ because $B$ affects $\text{SE}(\hat{\beta})$ in a very predictable way that is not meaningful and does not require a simulation to be understood. A larger budget produces a lower $\text{SE}(\hat{\beta})$, due to the larger allowable sample. Based on our derivations, we hypothesize that $c_1$, $c_2$, $\sigma$, and $\gamma$ will be the most consequential parameters to determining $R_{optimal}$ and $G_{optimal}$, and therefore we will focus on exploring these parameters. 
+Finally, we use the theoretical definitions above to inform our parameters of interest. We can see from our theoretical derivations that $\alpha$ and $\beta$, while consequential to the estimation of our treatment effect $\hat{\beta}$, will not alter the $\text{SE}(\hat{\beta})$. We do not present the results of varying $B$ because $B$ affects $\text{SE}(\hat{\beta})$ in a very predictable way that is not meaningful and does not require a simulation to be understood. A larger budget produces a lower $\text{SE}(\hat{\beta})$, due to the larger allowable sample. Based on our derivations, we hypothesize that $c_1$, $c_2$, $\sigma$, and $\gamma$ will be the most consequential parameters to determining $R_{optimal}$ and $G_{optimal}$, and therefore we will focus on exploring these parameters. 
 
 
 
@@ -2041,7 +2042,7 @@ The efficiency plot (Figure 10) reveals that optimal design choices follow simil
 
 ### Comparison Between Poisson and Normal
 
-The Poisson and normal cases share fundamental optimization patterns but differ in key aspects. While both show systematic relationships between cost ratios and optimal designs, the Poisson case exhibits cleaner transitions between optimal configurations, particularly at lower c₁ values. This is evident in both contour plots and efficiency plots, where the Poisson case shows more defined optimal regions.
+The Poisson and normal cases share fundamental optimization patterns but differ in key aspects. While both show systematic relationships between cost ratios and optimal designs, the Poisson case exhibits cleaner transitions between optimal configurations, particularly at lower $c_1$ values. This is evident in both contour plots and efficiency plots, where the Poisson case shows more defined optimal regions.
 
 The ICC plots reveal that both distributions maintain similar G-SE relationships across variance quartiles, with the Poisson case showing more consistent monotonic patterns. The clustering observed in Q4 for both cases suggests that increasing simulation power reveals stable optimal design configurations, regardless of distribution choice. These findings indicate that while similar principles guide optimal design in both cases, the Poisson case may actually offer more stable optimal solutions when sufficient simulation power is used to identify them.
 

@@ -23,7 +23,7 @@ Using the ADEMP framework, we simulated cRCTs under both normal and Poisson dist
 - Identified similar optimization patterns between normal and Poisson cases, with Poisson showing more defined optimal regions
 - Demonstrated that optimal designs cluster more distinctly in high-variance scenarios
 
-### Critical Insights
+### Main Insights
 1. Higher cost ratios ($c_1$/$c_2$) lead to:
    - Greater sensitivity to variance parameters
    - More volatile optimal configurations
@@ -54,9 +54,13 @@ While individual parameter effects follow expected patterns, their interactions 
    - tidyverse: 2.0.0
    - ggplot2: 3.4.3
    - lme4 1.1-34
+   - ggrepel 0.9.6
+   - latex2exp 0.9.6
+   - parallel 4.3.1
+   - doParallel 1.0.17
 
 ## Files
 
-- Report Quarto: [*add quarto*].qmd
+- Report Quarto: cluster_RCT_sim.qmd
 - Tex files: column-commands.tex, float-setup.tex, geometry-settings.tex, table-packages.tex, title-settings.tex
 - References file: references.bib
