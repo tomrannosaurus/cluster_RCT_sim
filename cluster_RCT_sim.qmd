@@ -141,7 +141,7 @@ Finally, we use the theoretical definitions above to inform our parameters of in
 
 
 
-## ADEMP Framework
+## Aim 1: ADEMP Framework
 
 ### A. Aims
 
@@ -159,7 +159,7 @@ The study focuses on a single primary estimand: the standard error (SE) of the t
 
 ### M. Methods
 
-Our methodology encompasses two key stages. First, we probe the design space using univariate modulation of our selected parameters. Second, we explore the design space in a factorial framework. We do so by systematically generating feasible combinations of $G$ and $R$ given the budget constraint, maintaining a minimum of $G = 7$ clusters for valid inference and maximum $R = 200$ replicates, and subsequently testing each of these valid combinations of $G$ and $R$ across multiple parameter values of $c_1$, $c_2$, $\sigma$, and $\gamma$. We do so by simulating data $n_{sims} = 1000$ times for each $(G,R)$ combination, fitting appropriate models, calculating empirical SE, and selecting the $(G,R)$ combination that minimizes SE. This process is repeated across the full parameter space to build a comprehensive understanding of optimal design choices.
+Our methodology encompasses two key stages. First, we probe the design space using univariate modulation of our selected parameters. Second, we explore the design space in a factorial framework. We do so by systematically generating feasible combinations of $G$ and $R$ given the budget constraint, maintaining a minimum of $G = 7$ clusters for valid inference and maximum $R = 200$ replicates, and subsequently testing each of these valid combinations of $G$ and $R$ across multiple parameter values of $c_1$, $c_2$, $\sigma$, and $\gamma$. We do so by simulating data $n_{sims} = 1000$ times in the Gaussian case and $n_{sims} = 500$ in the Poisson case for each $(G,R)$ combination, fitting appropriate models, calculating empirical SE, and selecting the $(G,R)$ combination that minimizes SE. This process is repeated across the full parameter space to build a comprehensive understanding of optimal design choices.
 
 We implement model fitting using linear mixed effects models (lmer) for the normal case and generalized linear mixed models (glmer) for the Poisson case, incorporating random effects for cluster-level variation and fixed effects for treatment. The implementation leverages parallel processing for simulation replicates with appropriate error handling for non-convergent models. Validation checks verify budget constraints, minimum cluster requirements, and monitor convergence issues. Special attention is paid to boundary conditions, tracking cases where optimal solutions occur at boundaries and identifying parameter combinations that lead to unstable solutions.
 
@@ -171,13 +171,30 @@ Performance evaluation occurs across multiple dimensions. Primary measures inclu
 
 # Results
 
-```{r core code}
+```{r core code, eval = F}
+
 
 ######### Section: Simulation Code #########
 
 ####### Subsection: DGP #######
 
 generate_clustered_data <- function(
+#' Generate Clustered Gaussian Data
+#'
+#' Simulates clustered data with a Gaussian outcome, including random effects 
+#' at the cluster level and measurement error at the observation level.
+#'
+#' @param n_clusters Num of clusters (min 2). Ensures treatment variation 
+#' across clusters
+#' @param n_replicates Num of replicates per cluster
+#' @param alpha Intercept of the model
+#' @param beta Treatment effect on the outcome
+#' @param gamma Standard deviation of the cluster-level random effects
+#' @param sigma Standard deviation of the measurement error
+#' @param seed Optional. Random seed for reproducibility
+#'
+#' @return A data frame containing simulated data, including observed outcome 
+#' and associated covariates 
     n_clusters = 100, # num clusters (G)
     n_replicates = 3, # num of replicates per cluster (R)
     alpha = 0, # intercept
@@ -218,6 +235,21 @@ generate_clustered_data <- function(
 
 
 generate_clustered_poisson_data <- function(
+#' Generate Clustered Poisson Data
+#'
+#' Simulates clustered data with a Poisson-distributed outcome, including random
+#' effects at the cluster level affecting the log mean of the distribution.
+#'
+#' @param n_clusters Number of clusters (minimum 2). Ensures treatment variation
+#' across clusters
+#' @param n_replicates Number of replicates per cluster
+#' @param alpha Intercept of the log mean model
+#' @param beta Treatment effect on the log mean of the outcome
+#' @param gamma SD of the cluster-level random effects on the log scale
+#' @param seed Optional. Random seed for reproducibility
+#'
+#' @return A data frame containing simulated data, including observed outcome
+#' and associated covariates 
     n_clusters = 100, 
     n_replicates = 3, 
     alpha = 0,
@@ -259,6 +291,16 @@ generate_clustered_poisson_data <- function(
 
 
 fit_mixed_model <- function(data, family = "gaussian") {
+#' Fit Mixed Model
+#'
+#' Fits a mixed-effects model or standard regression model based on the specified
+#' family and data structure. Supports Gaussian and Poisson families.
+#'
+#' @param data Input dataset containing outcome and covariates
+#' @param family Model family, either "gaussian" or "poisson"
+#'
+#' @return A list containing estimated treatment effect, standard error, confidence
+#' interval, the fitted model object, and a flag indicating convergence
   default_return <- list(
     beta_hat = NA_real_,
     beta_se = NA_real_,
@@ -333,6 +375,19 @@ fit_mixed_model <- function(data, family = "gaussian") {
 
 
 get_feasible_designs <- function(
+#' Get Feasible Designs
+#'
+#' Identifies feasible combinations of clusters and replicates within a given
+#' budget, considering fixed and additional per-replicate costs.
+#'
+#' @param budget Total budget available
+#' @param cost_first Cost per cluster for the first replicate
+#' @param cost_additional Cost per additional replicate per cluster
+#' @param min_clusters Min num of clusters (default 7, to ensure model fit)
+#' @param max_replicates Max num of replicates per cluster
+#'
+#' @return A data frame containing feasible designs with columns: num of clusters,
+#' num of replicates, and total cost
     budget, # B
     cost_first, # c1
     cost_additional, # c2
@@ -395,8 +450,23 @@ clusterExport(cl, varlist = c("generate_clustered_data",
               envir = environment())
 ## ---## ---## ---## ---
 
-
 evaluate_design <- function(
+#' Evaluate Design
+#'
+#' Simulates data for a given design (clusters and replicates) and evaluates
+#' model performance using specified parameters and family.
+#'
+#' @param G Num of clusters
+#' @param R Num of replicates per cluster
+#' @param n_sims Num of simulations to perform
+#' @param alpha Intercept of the model
+#' @param beta Treatment effect
+#' @param gamma SD of cluster-level random effects
+#' @param sigma SD of measurement error (Gaussian family only)
+#' @param family Model family, either "gaussian" or "poisson"
+#' @param cl Optional parallel cluster object for parallel simulations
+#'
+#' @return A list containing mean beta estimate, empirical SE, mean model SE,
     G,
     R,
     n_sims = 100,
@@ -405,8 +475,15 @@ evaluate_design <- function(
     gamma = 1,
     sigma = 0.5,
     family = "gaussian",
-    cl = NULL
-) {
+    cl = NULL) {
+  
+  # Calculate expected mu for Poisson case
+  # Using moment generating function of normal for epsilon
+  if(family == "poisson") {
+    control_mu = exp(alpha + gamma^2/2)  # X=0 case
+    treat_mu = exp(alpha + beta + gamma^2/2)  # X=1 case
+    avg_mu = (control_mu + treat_mu)/2
+  }
   # parallel handling (under 10 parallel not worth overhead)
   run_parallel <- !is.null(cl) && n_sims > 10
   
@@ -418,6 +495,7 @@ evaluate_design <- function(
   local_gamma <- gamma
   local_sigma <- sigma
   local_family <- family
+  
   
   sim_func <- function(i) {
     if (local_family == "gaussian") {
@@ -439,11 +517,10 @@ evaluate_design <- function(
       )
     }
     
-    results <- fit_mixed_model(sim_data,
-                               family = local_family)
-    list(beta_hat = results$beta_hat,
-         beta_se = results$beta_se)
+    results <- fit_mixed_model(sim_data, family = local_family)
+    list(beta_hat = results$beta_hat, beta_se = results$beta_se)
   }
+    
   
   if (run_parallel) {
     results_list <- parLapply(cl, 1:n_sims, sim_func)
@@ -454,12 +531,21 @@ evaluate_design <- function(
   beta_hats <- sapply(results_list, `[[`, "beta_hat")
   ses <- sapply(results_list, `[[`, "beta_se")
   
-  list(
+  # return different values based on family
+  base_results <- list(
     mean_beta_hat = mean(beta_hats, na.rm = TRUE),
     empirical_se = sd(beta_hats, na.rm = TRUE),
     mean_model_se = mean(ses, na.rm = TRUE),
     coverage = mean(abs(beta_hats - beta) <= 1.96 * ses, na.rm = TRUE)
   )
+  
+  if(family == "gaussian") {
+    base_results$measurement_var <- sigma
+  } else {
+    base_results$measurement_var <- sqrt(avg_mu)
+  }
+  
+  return(base_results)
 }
 
 
@@ -468,19 +554,34 @@ evaluate_design <- function(
 
 
 find_optimal_design <- function(
+#' Find Optimal Design
+#'
+#' Identifies the optimal design (clusters and replicates) under a specified
+#' budget by evaluating feasible designs through simulation.
+#'
+#' @param budget Total budget available
+#' @param cost_first Cost per cluster for the first replicate
+#' @param cost_additional Cost per additional replicate per cluster
+#' @param n_sims Num of simulations per design
+#' @param parameters List of model parameters
+#' @param family Model family, either "gaussian" or "poisson"
+#' @param cl Optional parallel cluster object for parallel simulations
+#'
+#' @return A list with two components: all_results (data frame of
+#' evaluated designs) and optimal (design with lowest empirical SE)
     budget,
     cost_first,
     cost_additional,
     n_sims = 100,
     parameters = list(alpha = 1, beta = 0.5, gamma = 1, sigma = 0.5),
     family = "gaussian",
-    cl = NULL
-) {
+    cl = NULL) {
+  
   designs <- get_feasible_designs(budget, cost_first, cost_additional)
   
   results <- list()
   for(i in 1:nrow(designs)) {
-    cat(sprintf("Evaluating design %d of %d: G=%d, R=%d\n", # ADD FOR TRACKING RUNS
+    cat(sprintf("Evaluating design %d of %d: G=%d, R=%d\n",
                 i, nrow(designs), designs$G[i], designs$R[i]))
     
     eval <- evaluate_design(
@@ -492,13 +593,14 @@ find_optimal_design <- function(
       gamma = parameters$gamma,
       sigma = parameters$sigma,
       family = family,
-      cl = cl  
+      cl = cl
     )
     
-    results[[i]] <- c(designs[i,], 
+    results[[i]] <- c(designs[i,],
                       empirical_se = eval$empirical_se,
                       model_se = eval$mean_model_se,
-                      coverage = eval$coverage)
+                      coverage = eval$coverage,
+                      measurement_var = eval$measurement_var)  
   }
   
   results_df <- do.call(rbind.data.frame, results)
@@ -513,13 +615,29 @@ find_optimal_design <- function(
 
 
 
-
-
 ####### Subsection: Factorial Simulation #######
-
 sim_factorial <- function(
+#' Simulate Factorial Combinations
+#'
+#' Simulates and evaluates optimal designs across factorial combinations of
+#' cost, measurement variance, and cluster-level variance for a given budget.
+#'
+#' @param budget Total budget available
+#' @param sigma_range Range of measurement variances (for Gaussian family)
+#' @param gamma_range Range of SDs for cluster-level random effects
+#' @param c1_range Range of costs per cluster for the first replicate
+#' @param c2_range Range of costs per additional replicate per cluster
+#' @param family Model family, either "gaussian" or "poisson"
+#' @param alpha Intercept of the model
+#' @param beta Treatment effect
+#' @param n_sims Num of simulations per design
+#' @param cl Optional parallel cluster object for parallel simulations
+#'
+#' @return A list with two components: optimal_results (data frame of optimal 
+#' designs for each combination) and all_scenarios_results (data frame of results 
+#' for all designs across all combinations)
     budget = 1000,
-    sigma_range = seq(0.2, 1, by = 0.2),
+    sigma_range = seq(0.2, 1, by = 0.2),  
     gamma_range = seq(0.5, 2, by = 0.3),
     c1_range = c(20, 50, 100),
     c2_range = c(1, 5, 10),
@@ -529,17 +647,43 @@ sim_factorial <- function(
     n_sims = 1000,
     cl = NULL
 ) {
-  #init storage obj
-  param_grid <- expand.grid(
-    sigma = sigma_range,
-    gamma = gamma_range,
-    c1 = c1_range,
-    c2 = c2_range
-  )
-  
+  if(family == "gaussian") {
+    param_grid <- expand.grid(
+      measurement_var = sigma_range,
+      gamma = gamma_range,
+      c1 = c1_range,
+      c2 = c2_range
+    )
+  } else {
+    # for Poisson case, compute mu range based on gamma
+    compute_mu <- function(gamma) {
+      control_mu <- exp(alpha + gamma^2/2)  # X=0 case
+      treat_mu <- exp(alpha + beta + gamma^2/2)  # X=1 case
+      (control_mu + treat_mu)/2  # Average mu
+    }
+    
+    # mu values for each gamma
+    mu_values <- sapply(gamma_range, compute_mu)
+    
+    param_grid <- expand.grid(
+      measurement_var = sqrt(mu_values),  # sqrt to match scale of sigma
+      gamma = gamma_range,
+      c1 = c1_range,
+      c2 = c2_range
+    )
+  }  
   # add computed vars
   param_grid$cost_ratio <- param_grid$c1 / param_grid$c2
-  param_grid$ICC <- (param_grid$gamma^2) / (param_grid$gamma^2 + param_grid$sigma^2)  
+  
+  # ICC differently for Poisson vs normal
+  if(family == "gaussian") {
+    param_grid$ICC <- (param_grid$gamma^2) / 
+                     (param_grid$gamma^2 + param_grid$measurement_var^2)
+  } else {
+    param_grid$ICC <- param_grid$gamma^2 / 
+                     (param_grid$gamma^2 + log(param_grid$measurement_var^2))
+  }
+  
   
   # init overall storage obj
   results_optimal_list <- vector("list", nrow(param_grid))
@@ -547,15 +691,23 @@ sim_factorial <- function(
   
   for(i in 1:nrow(param_grid)) { 
     cat(sprintf("\nTesting combination %d of %d:\n", i, nrow(param_grid)))
-    cat(sprintf("sigma=%.2f, gamma=%.2f, c1=%d, c2=%d \n",
-                param_grid$sigma[i], param_grid$gamma[i], 
-                param_grid$c1[i], param_grid$c2[i], param_grid$cost_ratio[i]))
+    
+    # Adjust printing based on family
+    if(family == "gaussian") {
+      cat(sprintf("sigma=%.2f, gamma=%.2f, c1=%d, c2=%d \n",
+                  param_grid$measurement_var[i], param_grid$gamma[i], 
+                  param_grid$c1[i], param_grid$c2[i]))
+    } else {
+      cat(sprintf("sqrt(mu)=%.2f, gamma=%.2f, c1=%d, c2=%d \n",
+                  param_grid$measurement_var[i], param_grid$gamma[i], 
+                  param_grid$c1[i], param_grid$c2[i]))
+    }
     
     parameters <- list(
       alpha = alpha,
       beta = beta,
       gamma = param_grid$gamma[i],
-      sigma = param_grid$sigma[i]
+      sigma = if(family == "gaussian") param_grid$measurement_var[i] else NULL
     )
     
     optimal <- find_optimal_design(
@@ -568,9 +720,9 @@ sim_factorial <- function(
       cl = cl
     )
     
-    # save optimal results
+    # save optimal results with appropriate naming
     results_optimal_list[[i]] <- data.frame(
-      sigma = param_grid$sigma[i],
+      measurement_var = param_grid$measurement_var[i],
       gamma = param_grid$gamma[i],
       c1 = param_grid$c1[i],
       c2 = param_grid$c2[i],
@@ -586,7 +738,7 @@ sim_factorial <- function(
     
     # save all results
     all_res_scenario <- optimal$all_results
-    all_res_scenario$sigma <- param_grid$sigma[i]
+    all_res_scenario$measurement_var <- param_grid$measurement_var[i]
     all_res_scenario$gamma <- param_grid$gamma[i]
     all_res_scenario$c1 <- param_grid$c1[i]
     all_res_scenario$c2 <- param_grid$c2[i]
@@ -608,12 +760,34 @@ sim_factorial <- function(
 
 
 
-
 ####### Subsection: Univariate Simulation #######
 
+compute_design_cost <- function(G, R, c1, c2) {
+  total_cost <- G * c1 + G * (R - 1) * c2
+  return(total_cost)
+}
 
+# NOTE: Normal case only, would need to alter fixed_params for Poisson
 explore_parameter_effect <- function(
-  # Univariate simulations for G/R  
+#' Explore Parameter Effect
+#'
+#' Conducts univariate simulations to assess the effect of varying the number of
+#' clusters G or replicates R while keeping other parameters fixed.
+#' Optionally considers budget constraints and adjusts designs accordingly.
+#'
+#' @param param_name Name of the parameter to vary ("G" or "R")
+#' @param param_range Range of values for the parameter
+#' @param fixed_params List of fixed parameter values for all other variables
+#' @param budget Optional total budget to constrain designs
+#' @param cost_first Cost per cluster for the first replicate
+#' @param cost_additional Cost per additional replicate per cluster
+#' @param n_sims Num of simulations to perform for each parameter value
+#' @param family Model family, either "gaussian" or "poisson" NOTE: BROKEN
+#' @param cl Optional parallel cluster object for parallel simulations
+#'
+#' @return A data frame containing simulation results for each parameter value,
+#' including variance estimate, empirical SE, model SE, coverage, and design
+#' characteristics (G, R, total_cost, and budget status)
   param_name,          
   param_range,         
   fixed_params = list( 
@@ -715,9 +889,25 @@ explore_parameter_effect <- function(
 
 
 
-
+# NOTE: Normal case only, would need to alter fixed_params for Poisson
 explore_model_parameter <- function(
-    # Univariate simulations for alpha/beta/sigma/gamma  
+#' Explore Model Parameter
+#'
+#' Simulates and evaluates the effect of varying a model parameter
+#' (alpha, beta, sigma, or gamma) while keeping others fixed.
+#'
+#' @param param_name Name of the parameter to vary
+#' @param param_range Range of values for the parameter
+#' @param fixed_params List of fixed parameter values
+#' @param budget Total budget for design
+#' @param cost_first Cost per cluster for the first replicate
+#' @param cost_additional Cost per additional replicate per cluster
+#' @param n_sims Num of simulations to perform
+#' @param family Model family, either "gaussian" or "poisson" NOTE: BROKEN
+#' @param cl Optional parallel cluster object
+#'
+#' @return Data frame of results for each parameter value, including
+#' variance estimate, empirical SE, model SE, coverage, and budget status
     param_name,          
     param_range,         
     fixed_params = list(
@@ -798,8 +988,24 @@ explore_model_parameter <- function(
   return(results)
 }
 
+# NOTE: Normal case only, would need to alter fixed_params for Poisson
 explore_cost_parameter <- function(
-    # Univariate simulations for c1/c2
+#' Explore Cost Parameter
+#'
+#' Simulates and evaluates the effect of varying cost parameters (c1 or c2)
+#' while keeping design and model parameters fixed.
+#'
+#' @param param_name Name of the cost parameter to vary (c1 or c2)
+#' @param param_range Range of values for the parameter
+#' @param fixed_params List of fixed parameter values
+#' @param budget Total budget for design
+#' @param other_cost Value of the other cost parameter
+#' @param n_sims Num of simulations to perform
+#' @param family Model family, either "gaussian" or "poisson" NOTE: BROKEN
+#' @param cl Optional parallel cluster object
+#'
+#' @return Data frame of results for each parameter value, including
+#' variance estimate, empirical SE, model SE, coverage, and budget status
     param_name,          
     param_range,         
     fixed_params = list(
@@ -884,12 +1090,12 @@ explore_cost_parameter <- function(
 
 
 
+```
 
 
 
 
-
-
+```{r, eval = F}
 ######### Section: Simulation Runs #########
 
 ####### Subsection: Univariate Runs #######
@@ -912,9 +1118,14 @@ res_G_gam_under_sig <- explore_parameter_effect(
   cl = cl
 )
 
-#saveRDS(res_G_gam_under_sig, "~/Downloads/res_G_gam_under_sig.rds")
-res_G_gam_under_sig <- readRDS("~/Downloads/res_G_gam_under_sig.rds")
+#saveRDS(res_G_gam_under_sig, "sim_data/res_G_gam_under_sig.rds")
+```
 
+```{r}
+res_G_gam_under_sig <- readRDS("sim_data/res_G_gam_under_sig.rds")
+```
+
+```{r, eval = F}
 res_G_gam_over_sig <- explore_parameter_effect(
   param_name = "G",
   param_range = seq(2, 100, by = 1),
@@ -932,11 +1143,14 @@ res_G_gam_over_sig <- explore_parameter_effect(
   cl = cl
 )
 
-#saveRDS(res_G_gam_over_sig, "~/Downloads/res_G_gam_over_sig.rds")
-res_G_gam_over_sig <- readRDS("~/Downloads/res_G_gam_over_sig.rds")
+#saveRDS(res_G_gam_over_sig, "sim_data/res_G_gam_over_sig.rds")
+```
 
+```{r}
+res_G_gam_over_sig <- readRDS("sim_data/res_G_gam_over_sig.rds")
+```
 
-
+```{r, eval = F}
 # For R exploration
 res_R_gam_under_sig <- explore_parameter_effect(
   param_name = "R",
@@ -955,10 +1169,13 @@ res_R_gam_under_sig <- explore_parameter_effect(
   cl = cl
 )
 
-#saveRDS(res_R_gam_under_sig, "~/Downloads/res_R_gam_under_sig.rds")
-res_R_gam_under_sig <- readRDS("~/Downloads/res_R_gam_under_sig.rds")
+#saveRDS(res_R_gam_under_sig, "sim_data/res_R_gam_under_sig.rds")
+```
+```{r}
+res_R_gam_under_sig <- readRDS("sim_data/res_R_gam_under_sig.rds")
+```
 
-
+```{r, eval = F}
 # For R exploration
 res_R_gam_over_sig <- explore_parameter_effect(
   param_name = "R",
@@ -977,12 +1194,15 @@ res_R_gam_over_sig <- explore_parameter_effect(
   cl = cl
 )
 
-#saveRDS(res_R_gam_over_sig, "~/Downloads/res_R_gam_over_sig.rds")
-res_R_gam_over_sig <- readRDS("~/Downloads/res_R_gam_over_sig.rds")
+#saveRDS(res_R_gam_over_sig, "sim_data/res_R_gam_over_sig.rds")
+```
+
+```{r}
+res_R_gam_over_sig <- readRDS("sim_data/res_R_gam_over_sig.rds")
+```
 
 
-
-
+```{r, eval = F}
 # For gamma parameter (not used in report)
 res_gamma <- explore_model_parameter(
   param_name = "gamma",
@@ -1002,12 +1222,15 @@ res_gamma <- explore_model_parameter(
   cl = cl
 )
 
-#saveRDS(res_gamma, "~/Downloads/res_gamma.rds")
-res_gamma <- readRDS("~/Downloads/res_gamma.rds")
+#saveRDS(res_gamma, "sim_data/res_gamma.rds")
+```
+
+```{r}
+res_gamma <- readRDS("sim_data/res_gamma.rds")
+```
 
 
-
-
+```{r, eval = F}
 # Sigma parameter (not used in report)
 res_sigma <- explore_model_parameter(
   param_name = "sigma",
@@ -1027,10 +1250,14 @@ res_sigma <- explore_model_parameter(
   cl = cl
 )
 
-#saveRDS(res_sigma, "~/Downloads/res_sigma.rds")
-res_sigma <- readRDS("~/Downloads/res_sigma.rds")
+#saveRDS(res_sigma, "sim_data/res_sigma.rds")
+```
 
+```{r}
+res_sigma <- readRDS("sim_data/res_sigma.rds")
+```
 
+```{r, eval = F}
 # alpha parameter  (not used in report)
 res_alpha <- explore_model_parameter(
   param_name = "alpha",
@@ -1050,9 +1277,14 @@ res_alpha <- explore_model_parameter(
   cl = cl
 )
 
-#saveRDS(res_alpha, "~/Downloads/res_alpha.rds")
-res_alpha <- readRDS("~/Downloads/res_alpha.rds")
+#saveRDS(res_alpha, "sim_data/res_alpha.rds")
+```
 
+```{r}
+res_alpha <- readRDS("sim_data/res_alpha.rds")
+```
+
+```{r, eval = F}
 # Beta parameter (not used in report)
 res_beta <- explore_model_parameter(
   param_name = "beta", 
@@ -1072,9 +1304,13 @@ res_beta <- explore_model_parameter(
   cl = cl
 )
 
-#saveRDS(res_beta, "~/Downloads/res_beta.rds")
-res_beta <- readRDS("~/Downloads/res_beta.rds")
+#saveRDS(res_beta, "sim_data/res_beta.rds")
+```
+```{r}
+res_beta <- readRDS("sim_data/res_beta.rds")
+```
 
+```{r, eval = F}
 # c1 parameter (not used in report)
 res_c1 <- explore_cost_parameter(
   param_name = "c1",
@@ -1094,9 +1330,14 @@ res_c1 <- explore_cost_parameter(
   cl = cl
 )
 
-#saveRDS(res_c1, "~/Downloads/res_c1.rds")
-res_c1 <- readRDS("~/Downloads/res_c1.rds")
+#saveRDS(res_c1, "sim_data/res_c1.rds")
+```
 
+```{r}
+res_c1 <- readRDS("sim_data/res_c1.rds")
+```
+
+```{r, eval = F}
 # c2 parameter (not used in report)
 res_c2 <- explore_cost_parameter(
   param_name = "c2",
@@ -1116,16 +1357,18 @@ res_c2 <- explore_cost_parameter(
   cl = cl
 )
 
-#saveRDS(res_c2, "~/Downloads/res_c2.rds")
-res_c2 <- readRDS("~/Downloads/res_c2.rds")
+#saveRDS(res_c2, "sim_data/res_c2.rds")
+```
+```{r}
+res_c2 <- readRDS("sim_data/res_c2.rds")
+```
 
 
 
 
 
 
-
-
+```{r, eval = F}
 ######### Section: Simulation Runs #########
 
 ####### Subsection: Factorial Runs #######
@@ -1142,35 +1385,52 @@ resg <- sim_factorial(
   cl = cl
 )
 
-#saveRDS(resg, "~/Downloads/results_g3.rds")
-resg <- readRDS("~/Downloads/results_g3.rds")
+#saveRDS(resg, "sim_data/results_g2.rds")
+```
 
+```{r}
+resg <- readRDS("sim_data/results_g2.rds")
+```
+
+```{r, eval = F}
 # Run factorial: poisson
 resp <- sim_factorial(
   budget = 1000,
-  sigma_range = seq(0.2, 2, by = 0.3),
   gamma_range = seq(0.5, 3, by = 0.5),
   c1_range = c(20, 50, 100),
   c2_range = c(1, 10, 19),
-  n_sims = 1000,
+  n_sims = 500,
   family = "poisson",
   cl = cl
 )
 
-#saveRDS(results_p, "~/Downloads/results_p3.rds")
-resp <- readRDS("~/Downloads/results_p3.rds")
+#saveRDS(results_p, "sim_data/results_p3.rds")
+```
+
+```{r}
+resp <- readRDS("sim_data/results_p_fix2.rds")
+```
 
 
 
 
-
-
+```{r}
 ######### Section: Simulation Plots #########
 
 ####### Subsection: Univariate Plot Functions #######
 
-
+# NOTE: Normal case only, would need to alter label for Poisson
 plot_G_exploration <- function(results, fixed_params, include_se = TRUE) {
+#' Plot G Exploration
+#'
+#' Creates a plot showing empirical SE vs num of clusters (G) for design
+#' exploration, highlighting budget constraints and maximal designs.
+#'
+#' @param results Data frame of results from G exploration
+#' @param fixed_params List of fixed parameter values
+#' @param include_se Logical, whether to include SE ribbons in the plot
+#'
+#' @return ggplot object showing empirical SE against num of clusters
   subtitle <- TeX(sprintf(
     "Fixed parameters: $\\alpha=%.2f$,
     $\\beta=%.2f$, $\\gamma=%.2f$, $\\sigma=%.2f$,
@@ -1231,7 +1491,18 @@ plot_G_exploration <- function(results, fixed_params, include_se = TRUE) {
 }
 
 
+# NOTE: Normal case only, would need to alter label for Poisson
 plot_R_exploration <- function(results, fixed_params, include_se = TRUE) {
+#' Plot R Exploration
+#'
+#' Creates a plot showing empirical SE vs replicates per cluster (R) for
+#' design exploration, highlighting budget constraints and maximal designs.
+#'
+#' @param results Data frame of results from R exploration
+#' @param fixed_params List of fixed parameter values
+#' @param include_se Logical, whether to include SE ribbons in the plot
+#'
+#' @return ggplot object showing empirical SE against replicates per cluster
   subtitle <- TeX(sprintf(
     "Fixed parameters: $\\alpha=%.2f$,
     $\\beta=%.2f$, $\\gamma=%.2f$, $\\sigma=%.2f$,
@@ -1296,7 +1567,7 @@ plot_model_parameter <- function(results, param_name, fixed_params) {
   param_labels <- list(
     alpha = "Intercept (α)",
     beta = "Treatment Effect (β)",
-    sigma = "Measurement Error SD (σ)",
+    sigma = if(family == "gaussian") "Measurement Error SD (σ)" else "Expected Count (μ)",
     gamma = "Cluster Effect SD (γ)"
   )
   
@@ -1337,6 +1608,9 @@ plot_model_parameter <- function(results, param_name, fixed_params) {
     )
 }
 
+
+
+# NOTE: Normal case only, would need to alter label for Poisson
 plot_cost_parameter <- function(results, param_name, fixed_params) {
   subtitle <- sprintf(
     "Fixed parameters: G=%d, R=%d, α=%.2f, β=%.2f, γ=%.2f, σ=%.2f, B=%d",
@@ -1384,17 +1658,36 @@ plot_cost_parameter <- function(results, param_name, fixed_params) {
 
 ####### Subsection: Factorial Plot Function #######
 
-create_factorial_analysis_plots <- function(results_df, budget = 1000) {
+
+create_factorial_analysis_plots <- function(
+#' Create Factorial Analysis Plots
+#'
+#' Generates a set of plots from factorial analysis results, including
+#' contour plots for optimal designs, ICC analysis, and cost efficiency.
+#'
+#' @param results_df Data frame containing factorial analysis results
+#' @param budget Total budget for designs
+#' @param family Model family, either "gaussian" or "poisson"
+#'
+#' @return A list containing three ggplot objects (contour plot, ICC plot,
+#' efficiency plot) and a summary statistics table    
+  
+  results_df,
+  budget = 1000,
+  family = "gaussian") {
+  
   library(ggplot2)
   library(dplyr)
   library(patchwork)
   library(geomtextpath)
   library(ggrepel)
   
-
   results_df <- results_df %>%
-    mutate(
-      total_variance = gamma^2 + sigma^2,
+  mutate(
+    total_variance = if(family == "gaussian") 
+                     gamma^2 + measurement_var^2 
+                     else 
+                     gamma^2 + log(measurement_var^2),
       cost_combination = paste0("c[1] == ", c1, " ~ c[2] == ", c2)
     ) %>%
     mutate(
@@ -1413,7 +1706,9 @@ create_factorial_analysis_plots <- function(results_df, budget = 1000) {
     )
   
   # Contour plot
-  contour_plot <- ggplot(results_df, aes(x = sigma, y = gamma)) +
+  contour_plot <- ggplot(results_df, 
+                         aes(x = measurement_var, 
+                             y = gamma)) +
     geom_contour_filled(
       aes(z = optimal_G),
       binwidth = 3
@@ -1439,11 +1734,13 @@ create_factorial_analysis_plots <- function(results_df, budget = 1000) {
     labs(
       title = "Optimal Number of Clusters (G) & Replicates (R)",
       subtitle = "Contours show optimal G & R that minimizes empirical SE",
-      x = "σ (Measurement Error SD)",
-      y = "γ (Cluster Variation SD)"
+      x = if(family == "poisson") 
+        expression(sqrt(mu) ~ "(Measurement Error)") 
+      else 
+        expression(sigma ~ "(Measurement Error SD)"),
+      y = expression(gamma ~ "(Cluster Variation SD)")
     ) +
     theme_minimal()
-  
   
   # ICC analysis plot
   icc_plot <- results_df %>%
@@ -1459,13 +1756,17 @@ create_factorial_analysis_plots <- function(results_df, budget = 1000) {
     facet_wrap(~variance_cat) +
     scale_color_viridis_c(name = "ICC") +
     labs(
-      title = "Effect of Number of Clusters on SE",
-      subtitle = "Controlling for Total Variance",
+      title = "Effect of Number of Clusters on SE | Controlling for Total Variance",
       x = "Number of Clusters (G)",
       y = "Empirical SE"
     ) +
     theme_minimal() +
-    theme(legend.position = "bottom")
+    theme(legend.position = "right",
+          plot.title = element_text(size = 8),
+          axis.title.x = element_text(size = 8), 
+          axis.title.y = element_text(size = 8),
+          legend.title = element_text(size = 8)
+  )
   
   # Cost efficiency plot
   optimal_points <- results_df %>%
@@ -1494,7 +1795,13 @@ create_factorial_analysis_plots <- function(results_df, budget = 1000) {
       y = "Replicates per Cluster (R)"
     ) +
     theme_minimal() +
-    theme(legend.position = "bottom")
+    theme(legend.position = "right",
+          plot.title = element_text(size = 8), 
+          plot.subtitle = element_text(size = 6),
+          axis.title.x = element_text(size = 8), 
+          axis.title.y = element_text(size = 8),
+          legend.title = element_text(size = 8)
+  )
   
   #c1 / c2 stats
   summary_stats <- results_df %>%
@@ -1537,56 +1844,262 @@ factorial_summary <- function(results) {
 }
 
 
+
+
 ```
 
 ## Aim 2: The Normal Case
 
+### Univariate Case
+
+
+```{r}
+####### Subsection: Univariate Plots #######
+
+p_G_gam_over_sig <- plot_G_exploration(res_G_gam_over_sig, fixed_params = list(
+  alpha = 1,
+  beta = 0.5,
+  gamma = 2,
+  sigma = 1
+))
+p_G_gam_under_sig <- plot_G_exploration(res_G_gam_under_sig, fixed_params = list(
+  alpha = 1,
+  beta = 0.5,
+  gamma = 0.5,
+  sigma = 1
+))
+
+```
+
+\btwocol
+```{r, fig.height=3.8}
+#| fig-cap: "SE vs. G, Fixed Parameters ($\\gamma = 2$)"
+
+p_G_gam_over_sig 
+```
+
+
+```{r, fig.height=3.8}
+#| fig-cap: "SE vs. G, Fixed Parameters ($\\gamma = .5$)"
+
+p_G_gam_under_sig
+```
+
+\etwocol
+
+
+
 ```{r}
 
+p_R_gam_over_sig <- plot_R_exploration(res_R_gam_over_sig, fixed_params = list(
+  alpha = 1,
+  beta = 0.5,
+  gamma = 2,
+  sigma = 1
+))
+p_R_gam_under_sig <- plot_R_exploration(res_R_gam_under_sig, fixed_params = list(
+  alpha = 1,
+  beta = 0.5,
+  gamma = 0.5,
+  sigma = 1
+))
 
+```
+
+
+
+\btwocol
+```{r, fig.height=3.8}
+#| fig-cap: "SE vs. R, Fixed Parameters ($\\gamma = 2$)"
+
+p_R_gam_over_sig 
+```
+
+
+```{r, fig.height=3.8}
+#| fig-cap: "SE vs. R, Fixed Parameters ($\\gamma = .5$)"
+
+p_R_gam_under_sig
+```
+
+\etwocol
+
+The univariate analysis reveals distinct patterns in how the empirical standard error (SE) responds to changes in the number of clusters (G) under different variance component relationships. For fixed parameters, when between-cluster variation exceeds within-cluster variation ($\gamma > \sigma$, Figure 1), we observe a smooth, monotonically decreasing relationship between G and SE. This suggests that, under these conditions, increasing the number of clusters consistently improves estimation precision, though with diminishing returns.
+
+In contrast, when within-cluster variation dominates ($\gamma < \sigma$, Figure 2), we observe a notable discontinuity in the SE curve as G moves from low to high. This discontinuity manifests as an abrupt increase in SE, followed by a gradual decline as G increases further. This pattern likely represents a boundary condition where the optimal balance between G and R shifts dramatically. The presence of this boundary effect primarily when $\gamma < \sigma$ suggests that study designs may be more sensitive to cluster size specifications when within-cluster variation is the dominant source of variability.
+
+
+
+
+
+
+Examination of the relationship between replicates per cluster (R) and empirical SE supports the insights gained above. In both variance scenarios ($\gamma > \sigma$ and $\gamma < \sigma$), we observe a non-monotonic relationship between R and SE, characterized by an initial decrease in SE as R increases from very low values, followed by a subsequent increase. This U-shaped pattern reflects the inherent trade-off imposed by the budget constraint: initial increases in R improve precision by reducing within-cluster variation, but further increases necessitate a reduction in the number of clusters (G), eventually degrading overall precision.
+
+Notable discontinuities appear in both scenarios, though with different characteristics. As with before, these discontinuities represent points where small changes in R result in discrete changes in the achievable number of clusters under the budget constraint, leading to abrupt shifts in estimation precision.
+
+The optimal R value appears relatively low in both scenarios (R = 1 or R = 10), suggesting that under these cost structures ($c_1 = 50$, $c_2 = 2$), the benefit of additional within-cluster replication is generally outweighed by the cost of sacrificing additional clusters. This finding reinforces the importance of variance component specifications in design choices, while highlighting the crucial role of cost ratios in determining optimal configurations.
+
+These observations show that optimal design choices may not follow intuitive patterns and can be highly sensitive to both variance parameters and cost structures, with discrete jumps in efficiency occurring at certain boundary points. We investigate this further below in factorial designs.
+
+
+```{r, eval = F}
+p_gamma <- plot_model_parameter(res_gamma, "gamma", fixed_params = list(
+  G = 25,
+  R = 3,
+  alpha = 1,
+  beta = 0.5,
+  sigma = 0.5
+))
+
+p_sigma <- plot_model_parameter(res_sigma, "sigma", fixed_params = list(
+  G = 20, R = 5, alpha = 1, beta = 0.5, gamma = 1
+))
+
+p_alpha <- plot_model_parameter(res_alpha, "alpha", fixed_params = list(
+  beta = 0.5, gamma = 1, sigma = 0.5
+))
+
+p_beta <- plot_model_parameter(res_beta, "beta", fixed_params = list(
+  alpha = 1, gamma = 1, sigma = 0.5
+))
+
+p_c1 <- plot_cost_parameter(res_c1, "c1", fixed_params = list(
+  alpha = 1, beta = 0.5, gamma = 1, sigma = 0.5
+))
+
+p_c2 <- plot_cost_parameter(res_c2, "c2", fixed_params = list(
+  alpha = 1, beta = 0.5, gamma = 1, sigma = 0.5
+))
+
+```
+### Factorial Framework
+
+```{r}
+plots_g <- create_factorial_analysis_plots(resg$optimal_results)
+
+```
+
+The factorial analysis reveals complex interactions between cost structures and variance components in determining optimal cluster randomized trial designs. Examining the contour plots (Figure 5), we observe distinct patterns across different cost ratio scenarios.
+
+When $c_1$ is high (100) relative to $c_2$, the optimal number of replicates (R) shows high sensitivity to both $\sigma$ and $\gamma$ values, evidenced by the complex contour patterns in the top row. This sensitivity manifests as rapid changes in optimal R across the variance parameter space, particularly when $c_2$ is low (1). As $c_2$ increases within this high $c_2$ scenario, the contours become more stable, suggesting that higher additional sampling costs stabilize the optimal design choices.
+
+In the moderate and low $c_1$ (50, 20) scenario, we observe more gradual transitions in optimal R values across the variance parameter space. The contours show clearer delineation and less erratic behavior compared to the high $c_1$ case. However, we note that across all $c_1$ values, the high cost ratio cases are the least stable with respect to $\sigma$ and $\gamma$. 
+
+The notable feature across all cost scenarios is the presence of distinct regions where optimal R values change abruptly. These discontinuities represent boundary conditions discussed above, where small changes in variance parameters can lead to substantially different optimal designs. These findings indicate that the relationship between variance components and optimal design choices becomes increasingly complex as the cost ratio ($c_1$/$c_2$) increases. 
+
+\blandscape
+
+```{r, fig.width=12.5, fig.height=8.5}
+#| fig-cap: "Contour Plot: Normal Case"
+
+plots_g$contour_plot
+```
+
+\elandscape
+
+
+The efficiency plot (Figure 7) demonstrates how optimal combinations of clusters (G) and replicates (R) vary across cost scenarios. A clear pattern emerges across the cost ratio spectrum: as c₁ decreases (moving down the rows), the optimal number of clusters increases while the optimal number of replicates decreases. This relationship is most pronounced when comparing $c_1$ = 100 scenarios (SE = 0.34) to $c_1$ = 20 scenarios (SE = 0.15), where lower initial sampling costs enable more clusters and yield notably lower standard errors.
+
+
+
+```{r, fig.width=8, fig.height=2.8}
+#| fig-cap: "ICC Plot: Normal Case"
+
+plots_g$icc_plot
+```
+
+The ICC plot (Figure 6) reveals how the relationship between number of clusters and SE varies across total variance quartiles. In low total variance scenarios (Q1), the relationship between G and SE is relatively stable. However, as total variance increases (Q2-Q4), we observe both higher SE values and more pronounced effects of ICC on the G-SE relationship. This is particularly evident in Q4, where high ICC values (lighter points) correspond to steeper declines in SE as G increases, suggesting that additional clusters become more valuable for precision when both total variance and ICC are high. These findings underscore that cost ratios appear to be more consequential than ICC for optimal design choices within the tested variance ranges. 
+
+
+```{r, fig.width=8.2, fig.height=3.7}
+#| fig-cap: "Efficiency Plot: Normal Case"
+
+plots_g$efficiency_plot
 
 ```
 
 
 
 
-### Univariate Case
-
-### Factorial Design
 
 ## Aim 3: The Poisson Case
 
-We skip the Poisson univariate case because our conclusions are subsumed within the discussion of the factorial design below.
+We forgo discussion of the Poisson univariate case because our conclusions are subsumed within the discussion of the factorial design below.
 
-### Factorial Design
+### Factorial Framework
+
+
+```{r}
+plots_p <- create_factorial_analysis_plots(resp$optimal_results, family = "poisson")
+
+```
+
+The Poisson case exhibits structured patterns in optimal design choices across cost and variance scenarios. The contour plot (Figure 8) shows systematic transitions between optimal G and R values, with clearer delineation of optimal regions compared to initial lower-powered simulations. This stability increases with lower $c_1$ values, as evidenced by the more uniform patterns in the bottom row of the contour plot.
+
+The ICC plot (Figure 9) reveals particularly informative clustering in Q4 (high variance), where we observe distinct groupings of optimal R and G values. This clustering suggests convergence toward stable optimal design configurations as simulation power increases. The relationship between G and SE remains consistently monotonic across quartiles, with slopes modulated by ICC values and total variance.
+
+The efficiency plot (Figure 10) reveals that optimal design choices follow similar broad patterns to the normal case - as $c_1$ decreases, optimal G increases and optimal R decreases. However, the SE values show greater sensitivity to cost ratios. Additionally, the points representing feasible designs cluster more tightly around the optimal values, suggesting fewer near-optimal alternative configurations compared to the normal case.
+
 
 ### Comparison Between Poisson and Normal
 
+The Poisson and normal cases share fundamental optimization patterns but differ in key aspects. While both show systematic relationships between cost ratios and optimal designs, the Poisson case exhibits cleaner transitions between optimal configurations, particularly at lower c₁ values. This is evident in both contour plots and efficiency plots, where the Poisson case shows more defined optimal regions.
+
+The ICC plots reveal that both distributions maintain similar G-SE relationships across variance quartiles, with the Poisson case showing more consistent monotonic patterns. The clustering observed in Q4 for both cases suggests that increasing simulation power reveals stable optimal design configurations, regardless of distribution choice. These findings indicate that while similar principles guide optimal design in both cases, the Poisson case may actually offer more stable optimal solutions when sufficient simulation power is used to identify them.
+
+
+
+\blandscape
+
+```{r, fig.width=12.5, fig.height=8.5}
+#| fig-cap: "Contour Plot: Poisson Case"
+
+plots_p$contour_plot
+```
+
+\elandscape
+
+
+
+
+```{r, fig.width=8, fig.height=2.8}
+#| fig-cap: "ICC Plot: Poisson Case"
+
+plots_p$icc_plot
+```
+
+
+
+```{r, fig.width=8.2, fig.height=3.7}
+#| fig-cap: "Efficiency Plot: Poisson Case"
+
+plots_p$efficiency_plot
+
+```
+
+
+
+
+
 # Limitations
 
-We identify two \[*change to three if necessary*\] major limitations. First, we recognize that generalized linear mixed models can be volatile. While we attempted to solve this issue by simulating many times, it might be beneficial to try a Bayesian modeling approach, which could potentially fit more reliable models with fewer repeated simulations. This is a potential area for future work.
+We identify three major limitations. First, we recognize that generalized linear mixed models can be volatile. While we attempted to solve this issue by simulating many times, it might be beneficial to try a Bayesian modeling approach, which could potentially fit more reliable models with fewer repeated simulations. This is a potential area for future work.
 
-The second major limitation is boundary effects. Optimal r and optimal G in each simulation were chosen by minimizing the SE of the estimator. However, there are many cases where we see boundary effects, i.e., the optimal r and G jump in a discontinuous way, between numbers that are not near each other, when moving from the best to the second-best answer. The reason for tthis is that we are close to a boundary, such that there is not actually that much of a penalty for choosing a different combination of r and G. A more comprehensive analysis would consider these boundayr conditions, without focusing on only one optimal r and G combination minimzing SE, but rather including those combinations that come very close to doing so. This would better quanttify risk implicit in their study design, in terms of doing the best job possible estimating the treatment effect, to researchers. In sum, because our analysis focuses only on optimal r and optimal G, and not potential very close cases, it may inflate the perceived risk of choosing the wrong r and G from $\sigma$ and $\gamma$. \[*note - not sure the sigma/gamma part of this last sentence makes sense*\]
+The second major limitation is boundary effects. optimal R and optimal G in each simulation were chosen by minimizing the SE of the estimator. However, there are many cases where we see boundary effects, i.e., the optimal R and G jump in a discontinuous way, between numbers that are not near each other, when moving from the best to the second-best answer. The reason for this is that we are close to a boundary, such that there is not actually that much of a penalty for choosing a different combination of r and G. A more comprehensive analysis would consider these boundary conditions, without focusing on only one optimal Rand G combination minimizing SE, but rather including those combinations that come very close to doing so. This would better quantify risk implicit in their study design, in terms of doing the best job possible estimating the treatment effect, to researchers. In sum, because our analysis focuses only on optimal R and optimal G, and not potential very close cases, it may inflate the perceived risk of choosing the wrong R and G within a given $\sigma$ and $\gamma$.
 
-**Optional limitation* The third major limitation is the range of $\sigma$ and $\gamma$ values that we test. As discussed below, one of our conclusions is that cost ratio seems to be more consequential than ICC for the range of $\sigma$ and $\gamma$ values that we test. However, we do not have a biological or other justification for that range.**
+The third major limitation is the range of $\sigma$ and $\gamma$ values that we test. As discussed below, one of our conclusions is that cost ratio seems to be more consequential than ICC for the range of $\sigma$ and $\gamma$ values that we test. However, we do not have a biological or other justification for that range.
 
 # Conclusions
 
-*Note - i am not sure that everything captures the difference between univariate and factorial results/conclusions*
+Overall, univariate cases yield generally expected results but factorial design revealed unexpectedly complicated ones. While univariate analyses showed predictable parameter relationships, factorial analysis revealed complex interactions between cost structures and variance components that would have been missed when examining parameters in isolation - particularly in how these interactions differ between normal and Poisson cases.
 
-Overall, univariate cases yield generally expected results but factorial design revealed unexpectedly complicated ones.
+The directionality of the effects of varying parameters on optimal R and optimal G were as expected. Where $\gamma$ was low relative to $\sigma$, optimal G was smaller than optimal R, and as $\gamma$ increased relative to $\sigma$, optimal G increased and optimal R decreased. Where $c_{2}$ was closer to $c_{1}$, optimal G was larger than optimal R, unless $\gamma$ was much smaller than $\sigma$. As $c_{2}$ decreased relative to $c_{1}$, optimal G decreased and optimal R increased. Also, varying the underlying parameters for the data generating process (i.e., all parameters other than $c_{1}$, $c_{2}$, and B) had predictable effects on our ability to estimate $\beta$. Specifically, increasing $\sigma$ and/or $\gamma$ increased SE, making it harder to make a confident estimate of treatment effect.
 
-The directionality of the effects of varying parameters on optimal r and optimal G were as expected. Where $\gamma$ was low relative to $\sigma$, optimal G was smaller than optimal r, and as $\gamma$ increased relative to $\sigma$, optimal G increased and optimal r decreased. Where $c_{2}$ was closer to $c_{1}$, optimal G was larger than optimal r, unless $\gamma$ was much smaller than $\sigma$. As $c_{2}$ decreased relative to $c_{1}$, optimal G decreased and optimal r increased.
+In the normal case, when cost ratio was high (when $c_{1}$ was much higher than $c_{2}$), the specific value of $\sigma$ and $\gamma$ changes optimal G and optimal R more than when cost ratio was low. Of note, in high cost ratio scenarios, the optimal R and G to minimize SE of the estimate changes in a non-linear way when varying ($\sigma$ and $\gamma$). Cost ratio seems to be more consequential than ICC ($\sigma$ and $\gamma$) on optimal G and optimal R, at least within the values of $\sigma$ and $\gamma$ that we test. When the cost ratio is low, $\sigma$ and $\gamma$ behave in a more linear fashion. When cost ratio is high, we observe more boundary conditions: the volatility of the results in terms of optimal R and G in a high cost ratio scenario is higher than in a low cost ratio. For the Poisson case, this pattern is similar. The relationship between variance components and optimal design choices appears more stable than the normal case, regardless of cost ratio.
 
-Also, varying the underlying parameters for the data generating process (i.e., all parameters other than $c_{1}$, $c_{2}$, and B) had predictable effects on our ability to estimate $\beta$. Specifically, increasing $\sigma$ and/or $\gamma$ increased SE, making it harder to make a confident estimate of treatment effect.
+Optimal G and R showed unexpected sensitivity to ICC, with abrupt changes in optimal design choices occurring across the parameter space. These discontinuous jumps and multiple local optima appearing in close proximity underscore the importance of accurate variance estimation before beginning a cRCT. The unexpected complexity of the relationship between variance and optimal G and optimal R suggests that estimating $\sigma$ and $\gamma$ prior to beginning a cRCT is critical to minimizing standard error.
 
-**note - add any other ways data generating parameters affected SE?**
-
-When cost ratio was high (when $c_{1}$ was much higher than $c_{2}$), the specific value of $\sigma$ and $\gamma$ changes optimal G and optimal r more than when cost ratio was low. Of note, in high cost ratio scenarios, the optimal r and G to minimize SE of the estimate changes in a non-linear way when varying ($\sigma$ and $\gamma$). Cost ratio seems to be more consequential than ICC ($\sigma$ and $\gamma$) on optimal G and optimal r, at least within the values of $\sigma$ and $\gamma$ that we test. When the cost ratio is low, $\sigma$ and $\gamma$ behave in a more linear fashion. When cost ratio is high, we observe more boundary conditions: the volatility of the results in terms of optimal r and G in a high cost ratio scenario is higher than in a low cost ratio.
-
-Optimal G and optimal r depended on ICC in a much more complex way than expected, with specific values of $\sigma$ and $\gamma$ changing optimal G and optimal r in a non-uniform way. We observed a non-linear relationship, with peaks and valleys, where there are different answers very near each other. \[*note - the sentence right before this note needs to be clarified*\] The unexpected complexity of the relationship between variance and optimal G and optimal r suggests that estimating $\sigma$ and $\gamma$ prior to beginning a cRCT is critical to minimizing standard error.
-
-In sum, although the effect of $c_{1}$ and $c_{2}$ on optimal r and G was easier to understand, understanding variance was more consequential. This underscores the importance of performing pilot studies before large-scale, high-budget studies: knowing $\gamma$ and $\sigma$, which are much harder to estimate in advance than $c_{1}$ and $c_{2}$, can be critically important. Even if one knows $c_{1}$ and $c_{2}$ in advance of the study, if one estimates $\sigma$ and $\gamma$ incorrectly, this may produce a configuration of r and G that appears to optimize the budget butt does not minimize SE.
+In sum, although the effect of $c_{1}$ and $c_{2}$ on optimal R and G was easier to understand, understanding variance was more consequential. This underscores the importance of performing pilot studies before large-scale, high-budget studies: knowing $\gamma$ and $\sigma$, which are much harder to estimate in advance than $c_{1}$ and $c_{2}$, can be critically important. Even if one knows $c_{1}$ and $c_{2}$ in advance of the study, if one estimates $\sigma$ and $\gamma$ incorrectly, this may produce a configuration of R and G that appears to optimize the budget but does not minimize SE.
 
 
 
