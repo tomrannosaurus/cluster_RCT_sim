@@ -126,11 +126,11 @@ j &= 1,\ldots,R
 \etwocol
 
 
-Next, we derive the theoretical standard error using the normal hierarchical case. Consider a cluster randomized trial with the hierarchical model $Y_{ij} = \mu + \beta X_i + \epsilon_i + e_{ij}$ where $\epsilon_i \sim N(0, \gamma^2)$ and $e_{ij} \sim N(0, \sigma^2)$ are independent. From @wu2024presentation we know that our budget constraint can be defined as $B = G(c_1 + c_2(R-1))$. This can be solved for $G$ as $G = \frac{B}{c_1 + c_2(R-1)}$. Following the derivation in @raudenbush1997statistical we see that this leads to a standard error of the treatment effect estimator $\hat{\beta}$ of: 
+Next, we derive the theoretical standard error using the normal hierarchical case. Consider a cluster randomized trial with the hierarchical model $Y_{ij} = \alpha + \beta X_i + \epsilon_i + e_{ij}$ where $\epsilon_i \sim N(0, \gamma^2)$ and $e_{ij} \sim N(0, \sigma^2)$ are independent. From @wu2024presentation we know that our cost constraint can be defined as $T = G(c_1 + c_2(R-1))$. This can be solved for $G$ as $G = \frac{T}{c_1 + c_2(R-1)}$. Following the derivation in @raudenbush1997statistical we see that this leads to a standard error of the treatment effect estimator $\hat{\beta}$ of: 
 
-$$\text{SE}(\hat{\beta}) = \sqrt{\frac{4(\gamma^2 + \sigma^2/R) \times (c_1 + c_2(R-1))} {B}}$$
+$$\text{SE}(\hat{\beta}) = \sqrt{\frac{4(\gamma^2 + \sigma^2/R) \times (c_1 + c_2(R-1))} {T}}$$
 
-Also from @raudenbush1997statistical we can see that $R_{optimal} = \sqrt{\frac{c_1\sigma^2}{c_2\gamma^2}}-1$ and therefore $G_{optimal} = \frac{B}{c_1 + c_2(R-1)}$. Substituting this into our expression for the standard error we find that:
+Also from @raudenbush1997statistical we can see that $R_{optimal} = \sqrt{\frac{c_1\sigma^2}{c_2\gamma^2}}-1$ and therefore $G_{optimal} = \frac{T}{c_1 + c_2(R-1)}$. Substituting this into our expression for the standard error we find that:
 
 $$\text{SE}(\hat{\beta}) = \sqrt{\frac{4(\gamma^2 + \sigma^2/R)} {G}}$$ 
 
