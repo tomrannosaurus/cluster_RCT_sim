@@ -13,6 +13,8 @@ Using the ADEMP framework, we simulated cRCTs under both normal and Poisson dist
 
 ## Key Findings
 
+![fig5](fig5.png)
+
 ### Univariate Analysis
 - Demonstrated predictable relationships between individual parameters and optimal designs
 - Revealed initial evidence of boundary conditions where optimal configurations change abruptly
